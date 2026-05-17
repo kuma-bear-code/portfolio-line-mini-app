@@ -1,7 +1,8 @@
 (function () {
   const state = {
     data: null,
-    range: "30"
+    range: "30",
+    metric: "asset"
   };
 
   const moneyFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -13,7 +14,9 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     bindTabs();
+    bindMetrics();
     bindRanges();
+    syncControls();
 
     const refreshButton = document.getElementById("refreshButton");
     if (refreshButton) {
@@ -44,12 +47,41 @@
     document.querySelectorAll(".range-btn").forEach(function (button) {
       button.addEventListener("click", function () {
         state.range = button.dataset.range || "30";
+        localStorage.setItem("portfolio.range", state.range);
         document.querySelectorAll(".range-btn").forEach(function (btn) {
           btn.classList.remove("is-active");
         });
         button.classList.add("is-active");
         renderChart();
       });
+    });
+  }
+
+  function bindMetrics() {
+    document.querySelectorAll(".metric-btn").forEach(function (button) {
+      button.addEventListener("click", function () {
+        state.metric = button.dataset.metric || "asset";
+        localStorage.setItem("portfolio.metric", state.metric);
+        document.querySelectorAll(".metric-btn").forEach(function (btn) {
+          btn.classList.remove("is-active");
+        });
+        button.classList.add("is-active");
+        renderChart();
+      });
+    });
+  }
+
+  function syncControls() {
+    const savedRange = localStorage.getItem("portfolio.range");
+    const savedMetric = localStorage.getItem("portfolio.metric");
+    if (savedRange) state.range = savedRange;
+    if (savedMetric) state.metric = savedMetric;
+
+    document.querySelectorAll(".range-btn").forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.dataset.range === state.range);
+    });
+    document.querySelectorAll(".metric-btn").forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.dataset.metric === state.metric);
     });
   }
 
@@ -219,21 +251,25 @@
     const container = document.getElementById("chartContainer");
     const meta = document.getElementById("chartMeta");
     const summary = document.getElementById("chartSummary");
+    const legend = document.getElementById("chartLegend");
     if (!container || !meta || !summary) return;
 
+    const metric = getChartMetricConfig(state.metric);
     const snapshots = (state.data && state.data.snapshots) || [];
     if (!snapshots.length) {
-      container.innerHTML = '<div class="empty">No asset history yet.</div>';
-      meta.textContent = "Waiting for snapshots";
+      container.innerHTML = '<div class="empty">まだ資産推移データがありません。</div>';
+      meta.textContent = "スナップショット待ち";
       summary.innerHTML = "";
+      if (legend) legend.innerHTML = "";
       return;
     }
 
     const filtered = filterSnapshots(snapshots, state.range);
     if (!filtered.length) {
-      container.innerHTML = '<div class="empty">No data in this range.</div>';
-      meta.textContent = "No data in range";
+      container.innerHTML = '<div class="empty">この期間のデータがありません。</div>';
+      meta.textContent = "期間内データなし";
       summary.innerHTML = "";
+      if (legend) legend.innerHTML = "";
       return;
     }
 
@@ -241,36 +277,47 @@
       .map(function (row) {
         return {
           date: row.date,
-          asset: toNumber(row.totalAsset),
+          value: metric.value(row),
           capital: toNumber(row.trueCapital)
         };
       })
       .filter(function (row) {
-        return row.date && isFiniteNumber(row.asset);
+        return row.date && isFiniteNumber(row.value);
       });
 
     if (!points.length) {
-      container.innerHTML = '<div class="empty">Unable to render the chart.</div>';
-      meta.textContent = "Render failed";
+      container.innerHTML = '<div class="empty">グラフを描画できませんでした。</div>';
+      meta.textContent = "描画失敗";
       summary.innerHTML = "";
+      if (legend) legend.innerHTML = "";
       return;
     }
 
-    const assetValues = points.map(function (p) { return p.asset; });
-    const capitalValues = points.map(function (p) { return p.capital; }).filter(isFiniteNumber);
-    const allValues = assetValues.concat(capitalValues);
-    let min = Math.min.apply(null, allValues);
-    let max = Math.max.apply(null, allValues);
+    const values = points.map(function (p) { return p.value; });
+    let min = Math.min.apply(null, values);
+    let max = Math.max.apply(null, values);
+
+    if (metric.overlay === "trueCapital") {
+      const capitals = points.map(function (p) { return p.capital; }).filter(isFiniteNumber);
+      if (capitals.length) {
+        min = Math.min.apply(null, values.concat(capitals));
+        max = Math.max.apply(null, values.concat(capitals));
+      }
+    } else if (metric.overlay === "zero") {
+      min = Math.min(min, 0);
+      max = Math.max(max, 0);
+    }
 
     if (!isFinite(min) || !isFinite(max)) {
-      container.innerHTML = '<div class="empty">Unable to calculate chart bounds.</div>';
-      meta.textContent = "Render failed";
+      container.innerHTML = '<div class="empty">グラフ範囲を計算できませんでした。</div>';
+      meta.textContent = "描画失敗";
       summary.innerHTML = "";
+      if (legend) legend.innerHTML = "";
       return;
     }
 
     if (min === max) {
-      const padValue = Math.max(Math.abs(min) * 0.05, 1);
+      const padValue = Math.max(Math.abs(min) * 0.05, metric.unit === "percent" ? 0.01 : 1);
       min -= padValue;
       max += padValue;
     } else {
@@ -279,7 +326,7 @@
       max += padValue;
     }
 
-    const range = Math.max(max - min, 1);
+    const range = Math.max(max - min, metric.unit === "percent" ? 0.01 : 1);
     const width = 1000;
     const height = 320;
     const pad = { top: 24, right: 24, bottom: 38, left: 80 };
@@ -294,7 +341,7 @@
       const y = pad.top + (plotH / 4) * i;
       const value = max - (range / 4) * i;
       svg.push('<line x1="' + pad.left + '" y1="' + y + '" x2="' + (width - pad.right) + '" y2="' + y + '" class="chart-grid"></line>');
-      svg.push('<text x="' + (pad.left - 10) + '" y="' + (y + 4) + '" text-anchor="end" class="chart-label">' + escapeHtml(formatCompact(value)) + "</text>");
+      svg.push('<text x="' + (pad.left - 10) + '" y="' + (y + 4) + '" text-anchor="end" class="chart-label">' + escapeHtml(metric.axis(value)) + "</text>");
     }
 
     const areaPath = buildPath(points, pad, plotW, plotH, min, range, true);
@@ -302,9 +349,20 @@
     svg.push('<path d="' + areaPath + '" fill="url(#assetFill)"></path>');
     svg.push('<path d="' + linePath + '" class="chart-line"></path>');
 
-    const capitalLine = buildHorizontalLine(points, pad, plotW, plotH, min, range);
-    if (capitalLine) {
-      svg.push('<path d="' + capitalLine + '" class="chart-capital"></path>');
+    if (metric.overlay === "trueCapital") {
+      const capitalLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function (point) {
+        return point.capital;
+      });
+      if (capitalLine) {
+        svg.push('<path d="' + capitalLine + '" class="chart-capital"></path>');
+      }
+    } else if (metric.overlay === "zero" && min <= 0 && max >= 0) {
+      const zeroLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function () {
+        return 0;
+      });
+      if (zeroLine) {
+        svg.push('<path d="' + zeroLine + '" class="chart-capital"></path>');
+      }
     }
 
     buildMarkers(points, pad, plotW, plotH, min, range).forEach(function (marker) {
@@ -321,15 +379,24 @@
 
     const first = points[0];
     const last = points[points.length - 1];
-    const change = last.asset - first.asset;
-    const changeRate = first.asset ? change / first.asset : 0;
-    meta.textContent = filtered[0].date + " to " + filtered[filtered.length - 1].date;
+    const delta = last.value - first.value;
+    const deltaRate = first.value ? delta / Math.abs(first.value) : 0;
+    meta.textContent = metric.label + " / " + filtered[0].date + " から " + filtered[filtered.length - 1].date;
     summary.innerHTML = [
-      pill("Start", formatNumber(first.asset)),
-      pill("Current", formatNumber(last.asset)),
-      pill(change >= 0 ? "Change +" + formatNumber(change) : "Change " + formatNumber(change), null, change >= 0 ? "good" : "warn"),
-      pill(formatPercent(changeRate), null, change >= 0 ? "good" : "warn")
+      pill("開始", metric.format(first.value)),
+      pill("現在", metric.format(last.value)),
+      pill(delta >= 0 ? "差分 +" + metric.format(delta) : "差分 " + metric.format(delta), null, delta >= 0 ? "good" : "warn"),
+      pill(formatPercent(deltaRate), null, delta >= 0 ? "good" : "warn")
     ].join("");
+
+    if (legend) {
+      legend.innerHTML = [
+        '<span class="legend-item"><span class="legend-swatch asset"></span>' + escapeHtml(metric.label) + '</span>',
+        metric.overlay === "trueCapital"
+          ? '<span class="legend-item"><span class="legend-swatch capital"></span>真の原資</span>'
+          : '<span class="legend-item"><span class="legend-swatch zero"></span>基準線</span>'
+      ].join("");
+    }
   }
 
   function filterSnapshots(snapshots, range) {
@@ -369,7 +436,7 @@
 
     const coords = points.map(function (p, idx) {
       const x = pad.left + (plotW * idx / Math.max(points.length - 1, 1));
-      const y = pad.top + plotH - ((p.asset - min) / range) * plotH;
+      const y = pad.top + plotH - ((p.value - min) / range) * plotH;
       return [x, y];
     });
 
@@ -386,8 +453,9 @@
     return d;
   }
 
-  function buildHorizontalLine(points, pad, plotW, plotH, min, range) {
-    const capital = toNumber(points[0] && points[0].capital);
+  function buildHorizontalLine(points, pad, plotW, plotH, min, range, valueGetter) {
+    const sample = points[0];
+    const capital = toNumber(valueGetter ? valueGetter(sample) : sample && sample.capital);
     if (!isFiniteNumber(capital)) return "";
     const y = pad.top + plotH - ((capital - min) / range) * plotH;
     return "M " + pad.left + " " + y + " L " + (pad.left + plotW) + " " + y;
@@ -400,14 +468,14 @@
     for (let i = 0; i < points.length; i += step) {
       const p = points[i];
       const x = pad.left + (plotW * i / Math.max(points.length - 1, 1));
-      const y = pad.top + plotH - ((p.asset - min) / range) * plotH;
+      const y = pad.top + plotH - ((p.value - min) / range) * plotH;
       out.push('<circle cx="' + x + '" cy="' + y + '" r="3.5" class="chart-dot"></circle>');
     }
 
     if (points.length > 1 && (points.length - 1) % step !== 0) {
       const last = points[points.length - 1];
       const x = pad.left + plotW;
-      const y = pad.top + plotH - ((last.asset - min) / range) * plotH;
+      const y = pad.top + plotH - ((last.value - min) / range) * plotH;
       out.push('<circle cx="' + x + '" cy="' + y + '" r="3.5" class="chart-dot"></circle>');
     }
 
@@ -429,6 +497,77 @@
       seen[idx] = true;
       return { idx: idx, text: points[idx].date };
     }).filter(Boolean);
+  }
+
+  function getChartMetricConfig(metric) {
+    switch (metric) {
+      case "gain":
+        return {
+          label: "損益",
+          unit: "money",
+          value: function (row) { return toNumber(row.gainAmount); },
+          axis: formatCompact,
+          format: formatNumber,
+          overlay: "zero"
+        };
+      case "cash":
+        return {
+          label: "現金",
+          unit: "money",
+          value: function (row) { return toNumber(row.cash); },
+          axis: formatCompact,
+          format: formatNumber,
+          overlay: "zero"
+        };
+      case "holdings":
+        return {
+          label: "保有評価",
+          unit: "money",
+          value: function (row) { return toNumber(row.totalAsset) - toNumber(row.cash); },
+          axis: formatCompact,
+          format: formatNumber,
+          overlay: "zero"
+        };
+      case "gainRate":
+        return {
+          label: "損益率",
+          unit: "percent",
+          value: function (row) { return toPercent(row.gainRate); },
+          axis: formatPercent,
+          format: formatPercent,
+          overlay: "zero"
+        };
+      case "trueCapital":
+        return {
+          label: "真の原資",
+          unit: "money",
+          value: function (row) { return toNumber(row.trueCapital); },
+          axis: formatCompact,
+          format: formatNumber,
+          overlay: null
+        };
+      case "asset":
+      default:
+        return {
+          label: "総資産",
+          unit: "money",
+          value: function (row) { return toNumber(row.totalAsset); },
+          axis: formatCompact,
+          format: formatNumber,
+          overlay: "trueCapital"
+        };
+    }
+  }
+
+  function toPercent(value) {
+    if (typeof value === "number" && isFinite(value)) {
+      return value;
+    }
+    const text = String(value == null ? "" : value).trim();
+    if (!text) return NaN;
+    const parsed = Number(text.replace(/%/g, "").replace(/,/g, ""));
+    if (!isFinite(parsed)) return NaN;
+    return parsed / 100;
   }
 
   function pill(text, value, tone) {
@@ -525,9 +664,9 @@
   function formatCompact(value) {
     if (!isFiniteNumber(value)) return "-";
     const abs = Math.abs(value);
-    if (abs >= 1000000000) return (value / 1000000000).toFixed(1) + "B";
-    if (abs >= 1000000) return (value / 1000000).toFixed(1) + "M";
-    if (abs >= 1000) return (value / 1000).toFixed(1) + "k";
+    if (abs >= 100000000) return (value / 100000000).toFixed(1) + "億";
+    if (abs >= 10000) return (value / 10000).toFixed(1) + "万";
+    if (abs >= 1000) return (value / 1000).toFixed(1) + "千";
     return moneyFmt.format(Math.round(value));
   }
 
