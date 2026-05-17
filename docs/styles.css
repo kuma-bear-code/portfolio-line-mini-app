@@ -435,6 +435,31 @@ body {
   padding: 8px 0;
 }
 
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.auth-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eaf4f0;
+  color: var(--accent);
+  border: 1px solid #cfe3db;
+}
+
+.auth-name {
+  color: var(--text);
+}
+
 @media (max-width: 560px) {
   .hero-metrics,
   .tabbar,

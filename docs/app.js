@@ -741,4 +741,125 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
+
+  function loadApp() {
+    setLoadingState(true);
+    initLiffIfNeeded((window.PORTFOLIO_APP_CONFIG || {}).liffId)
+      .then(function () {
+        return ensureAuthenticated();
+      })
+      .then(function (auth) {
+        return fetchPortfolioData(auth.idToken);
+      })
+      .then(function (data) {
+        if (data && data.error) {
+          throw new Error(data.error.message || "LINE認証に失敗しました。");
+        }
+        state.data = data;
+        renderAuthStatus(state.data && state.data.viewer);
+        renderApp(state.data || {});
+      })
+      .catch(function (error) {
+        if (error && error.__loginRedirected) return;
+        renderError(error);
+      })
+      .finally(function () {
+        setLoadingState(false);
+      });
+  }
+
+  function fetchPortfolioData(idToken) {
+    var baseUrl = (window.PORTFOLIO_APP_CONFIG || {}).apiBaseUrl;
+    if (!baseUrl || baseUrl.indexOf("REPLACE_WITH") >= 0) {
+      return Promise.reject(new Error("Apps Script の Web App URL が未設定です。"));
+    }
+
+    var url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + "api=portfolio";
+    if (idToken) {
+      url += "&idToken=" + encodeURIComponent(idToken);
+    }
+    return jsonp(url);
+  }
+
+  function ensureAuthenticated() {
+    if (!window.liff) {
+      return Promise.reject(new Error("LINEログインの初期化に失敗しました。"));
+    }
+
+    if (!window.liff.isLoggedIn()) {
+      window.liff.login();
+      return Promise.reject({ __loginRedirected: true });
+    }
+
+    var idToken = window.liff.getIDToken && window.liff.getIDToken();
+    if (!idToken) {
+      return Promise.reject(new Error("LINEのIDトークンを取得できませんでした。"));
+    }
+
+    return Promise.resolve({ idToken: idToken });
+  }
+
+  function jsonp(url) {
+    return new Promise(function (resolve, reject) {
+      var callbackName = "__portfolioCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+      var script = document.createElement("script");
+      var timeoutId = null;
+
+      function cleanup() {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (script.parentNode) script.parentNode.removeChild(script);
+        try {
+          delete window[callbackName];
+        } catch (e) {
+          window[callbackName] = undefined;
+        }
+      }
+
+      window[callbackName] = function (payload) {
+        cleanup();
+        if (payload && payload.error) {
+          reject(new Error(payload.error.message || "LINE認証に失敗しました。"));
+          return;
+        }
+        resolve(payload);
+      };
+
+      script.onerror = function () {
+        cleanup();
+        reject(new Error("ポートフォリオデータの読み込みに失敗しました。"));
+      };
+
+      timeoutId = setTimeout(function () {
+        cleanup();
+        reject(new Error("ポートフォリオデータの読み込みがタイムアウトしました。"));
+      }, 15000);
+
+      script.src = url + "&callback=" + callbackName;
+      document.body.appendChild(script);
+    });
+  }
+
+  function initLiffIfNeeded(liffId) {
+    if (!window.liff || !liffId || liffId.indexOf("REPLACE_WITH") >= 0) {
+      return Promise.resolve();
+    }
+    return window.liff.init({
+      liffId: liffId,
+      withLoginOnExternalBrowser: true
+    });
+  }
+
+  function renderAuthStatus(viewer) {
+    var el = document.getElementById("authStatus");
+    if (!el) return;
+
+    if (!viewer || !viewer.name) {
+      el.innerHTML = '<span class="auth-pill">LINEログイン中</span>';
+      return;
+    }
+
+    el.innerHTML =
+      '<span class="auth-pill">LINEログイン済み</span>' +
+      '<span class="auth-name">' + escapeHtml(viewer.name) + '</span>';
+  }
 })();

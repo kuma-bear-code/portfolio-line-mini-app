@@ -5,14 +5,15 @@ var CONFIG = {
   WATCH_SUMMARY_SHEET: "\u76e3\u8996\u96c6\u8a08",
   WEEKLY_REVIEW_SHEET: "\u9031\u6b21\u30ec\u30d3\u30e5\u30fc",
   SNAPSHOT_SHEET: "\u65e5\u6b21\u8cc7\u7523\u30b9\u30ca\u30c3\u30d7\u30b7\u30e7\u30c3\u30c8",
-  LIFF_ID: "2010108717-qrydg64H"
+  LIFF_ID: "2010108717-qrydg64H",
+  LINE_CHANNEL_ID: "REPLACE_WITH_LINE_CHANNEL_ID"
 };
 
 function doGet(e) {
   e = e || {};
 
   if (e.parameter && e.parameter.api === "portfolio") {
-    return createPortfolioApiResponse_(e.parameter.callback);
+    return createPortfolioApiResponse_(e.parameter.callback, e.parameter.idToken);
   }
 
   return HtmlService.createTemplateFromFile("Index")
@@ -257,8 +258,29 @@ function normalizeDateKey_(value) {
   return text;
 }
 
-function createPortfolioApiResponse_(callback) {
-  var payload = getPortfolioAppData();
+function createPortfolioApiResponse_(callback, idToken) {
+  var payload;
+
+  try {
+    var viewer = verifyLineIdToken_(idToken);
+    payload = getPortfolioAppData();
+    payload.viewer = {
+      userId: viewer.sub || "",
+      name: viewer.name || "",
+      picture: viewer.picture || "",
+      email: viewer.email || ""
+    };
+    payload.auth = {
+      verified: true
+    };
+  } catch (error) {
+    payload = {
+      error: {
+        message: error && error.message ? error.message : String(error || "LINE\u30ed\u30b0\u30a4\u30f3\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002")
+      }
+    };
+  }
+
   var body = callback
     ? String(callback) + "(" + JSON.stringify(payload) + ");"
     : JSON.stringify(payload);
@@ -266,4 +288,38 @@ function createPortfolioApiResponse_(callback) {
   return ContentService
     .createTextOutput(body)
     .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
+}
+
+function verifyLineIdToken_(idToken) {
+  if (!idToken) {
+    throw new Error("LINE\u30ed\u30b0\u30a4\u30f3\u304c\u5fc5\u8981\u3067\u3059\u3002");
+  }
+
+  if (!CONFIG.LINE_CHANNEL_ID || /REPLACE_WITH/.test(CONFIG.LINE_CHANNEL_ID)) {
+    throw new Error("LINE_CHANNEL_ID \u304c\u672a\u8a2d\u5b9a\u3067\u3059\u3002");
+  }
+
+  var res = UrlFetchApp.fetch("https://api.line.me/oauth2/v2.1/verify", {
+    method: "post",
+    muteHttpExceptions: true,
+    payload: {
+      id_token: idToken,
+      client_id: CONFIG.LINE_CHANNEL_ID
+    },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }
+  });
+
+  var text = res.getContentText();
+  if (res.getResponseCode() !== 200 || !text) {
+    throw new Error("LINE\u30ed\u30b0\u30a4\u30f3\u306e\u691c\u8a3c\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002");
+  }
+
+  var json = JSON.parse(text);
+  if (!json || !json.sub) {
+    throw new Error("LINE\u30ed\u30b0\u30a4\u30f3\u306e\u8a8d\u8a3c\u7d50\u679c\u3092\u53d6\u5f97\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002");
+  }
+
+  return json;
 }
