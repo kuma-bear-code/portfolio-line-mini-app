@@ -1,0 +1,217 @@
+<script>
+  const state = {
+    data: null
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    bindTabs();
+    document.getElementById('refreshButton').addEventListener('click', loadApp);
+    loadApp();
+  });
+
+  function bindTabs() {
+    document.querySelectorAll('.tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach((tab) => tab.classList.remove('is-active'));
+        document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('is-active'));
+        button.classList.add('is-active');
+        document.querySelector(`[data-panel="${button.dataset.tab}"]`).classList.add('is-active');
+      });
+    });
+  }
+
+  async function loadApp() {
+    setLoadingState(true);
+    try {
+      const data = await runServer('getPortfolioAppData');
+      state.data = data;
+      await initLiffIfNeeded(data.config?.liffId);
+      renderApp(data);
+    } catch (error) {
+      renderError(error);
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  function runServer(name) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        [name]();
+    });
+  }
+
+  async function initLiffIfNeeded(liffId) {
+    if (!liffId || liffId === 'REPLACE_WITH_YOUR_LIFF_ID') return;
+    if (window.liff && !liff.isInClient?.()) {
+      await liff.init({ liffId });
+    } else if (window.liff) {
+      await liff.init({ liffId });
+    }
+  }
+
+  function renderApp(data) {
+    renderHero(data.home);
+    renderHome(data.home);
+    renderHoldings(data.holdings || []);
+    renderWatchlist(data.watchlist || []);
+    renderWeekly(data.weekly || {});
+  }
+
+  function renderHero(home) {
+    const metrics = [
+      ['総資産', home.totalAsset],
+      ['増減額', home.gainAmount],
+      ['増減率', home.gainRate],
+      ['保有銘柄数', home.holdingCount]
+    ];
+    document.getElementById('heroMetrics').innerHTML = metrics.map(([label, value]) => `
+      <div class="metric-card">
+        <div class="metric-label">${escapeHtml(label)}</div>
+        <div class="metric-value">${escapeHtml(value || '-')}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderHome(home) {
+    const rows = [
+      ['最終更新', home.updatedAt],
+      ['真の原資', home.trueCapital],
+      ['最大構成', home.maxWeight],
+      ['メモ', home.note]
+    ];
+    renderSummaryList('homeSummary', rows);
+  }
+
+  function renderHoldings(items) {
+    renderCardList('holdingsList', items, (item) => `
+      <div class="list-item-title">
+        <div>
+          <div class="list-item-name">${escapeHtml(item.name)}</div>
+          <div class="list-item-code">${escapeHtml(item.code)}</div>
+        </div>
+        <span class="pill">${escapeHtml(item.type)}</span>
+      </div>
+      <div class="list-grid">
+        ${kv('数量', item.qty)}
+        ${kv('評価額', item.valueJpy)}
+        ${kv('価格', item.priceJpy)}
+        ${kv('証券会社', item.broker)}
+      </div>
+    `);
+  }
+
+  function renderWatchlist(items) {
+    renderCardList('watchlistList', items, (item) => `
+      <div class="list-item-title">
+        <div>
+          <div class="list-item-name">${escapeHtml(item.name)}</div>
+          <div class="list-item-code">${escapeHtml(item.code)}</div>
+        </div>
+        <span class="pill ${judgeClass(item.autoJudge)}">${escapeHtml(item.autoJudge || item.manualHint || '監視中')}</span>
+      </div>
+      <div class="list-grid">
+        ${kv('テーマ', item.theme)}
+        ${kv('現在価格', item.currentPrice)}
+        ${kv('開始後騰落率', item.changeRate)}
+        ${kv('目標買付額', item.targetBudget)}
+        ${kv('差額', item.diff)}
+        ${kv('レビュー要点', item.reviewPoint || item.manualHint)}
+      </div>
+    `);
+  }
+
+  function renderWeekly(weekly) {
+    renderSummaryList('weeklySummary', [
+      ['最終更新', weekly.updatedAt],
+      ['監視銘柄数', weekly.watchCount],
+      ['押し目候補数', weekly.dipCount],
+      ['メモ', weekly.memo]
+    ]);
+
+    renderSimpleRows('themeList', weekly.themes || [], ['テーマ', '銘柄数', '目標買付額']);
+    renderSimpleRows('candidateList', weekly.candidates || [], ['銘柄', 'テーマ', '自動判定', '手動候補', '開始後騰落率', '差額']);
+    renderSimpleRows('budgetList', weekly.budgets || [], ['銘柄', 'テーマ', '目標買付額', '現在価値', '差額', '自動判定']);
+  }
+
+  function renderSummaryList(id, rows) {
+    const el = document.getElementById(id);
+    el.innerHTML = rows.map(([key, value]) => `
+      <div class="summary-row">
+        <div class="summary-key">${escapeHtml(key)}</div>
+        <div class="summary-value">${escapeHtml(value || '-')}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderCardList(id, items, renderer) {
+    const el = document.getElementById(id);
+    if (!items.length) {
+      el.innerHTML = '<div class="empty">表示できるデータがまだありません。</div>';
+      return;
+    }
+    el.innerHTML = items.map((item) => `<div class="list-item">${renderer(item)}</div>`).join('');
+  }
+
+  function renderSimpleRows(id, rows) {
+    const el = document.getElementById(id);
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty">まだデータがありません。</div>';
+      return;
+    }
+    el.innerHTML = rows.map((row) => `
+      <div class="list-item">
+        <div class="list-grid">
+          ${row.map((cell, idx) => `
+            <div>
+              <div class="list-k">項目 ${idx + 1}</div>
+              <div class="list-v">${escapeHtml(cell)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function kv(key, value) {
+    return `
+      <div>
+        <div class="list-k">${escapeHtml(key)}</div>
+        <div class="list-v">${escapeHtml(value || '-')}</div>
+      </div>
+    `;
+  }
+
+  function judgeClass(value) {
+    if (!value) return '';
+    if (value.includes('押し目')) return 'good';
+    if (value.includes('高ボラ') || value.includes('注意')) return 'warn';
+    return '';
+  }
+
+  function setLoadingState(isLoading) {
+    const button = document.getElementById('refreshButton');
+    button.disabled = isLoading;
+    button.textContent = isLoading ? '…' : '↻';
+  }
+
+  function renderError(error) {
+    document.getElementById('heroMetrics').innerHTML = `
+      <div class="metric-card">
+        <div class="metric-label">読み込み失敗</div>
+        <div class="metric-value">${escapeHtml(error.message || String(error))}</div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+</script>

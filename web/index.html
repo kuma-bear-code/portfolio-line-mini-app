@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>株ポートフォリオ</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script>
+      window.PORTFOLIO_APP_CONFIG = {
+        apiBaseUrl: "REPLACE_WITH_YOUR_APPS_SCRIPT_WEB_APP_URL",
+        liffId: "REPLACE_WITH_YOUR_LIFF_ID"
+      };
+    </script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">LINE Mini App</div>
+          <h1>株ポートフォリオ</h1>
+        </div>
+        <button id="refreshButton" class="icon-button" type="button" aria-label="更新">↻</button>
+      </header>
+
+      <section class="hero-metrics" id="heroMetrics"></section>
+
+      <nav class="tabbar" aria-label="sections">
+        <button class="tab is-active" data-tab="home" type="button">ホーム</button>
+        <button class="tab" data-tab="holdings" type="button">保有</button>
+        <button class="tab" data-tab="watchlist" type="button">監視</button>
+        <button class="tab" data-tab="weekly" type="button">週次</button>
+      </nav>
+
+      <main>
+        <section class="panel is-active" data-panel="home">
+          <div class="section-card">
+            <h2>今日の状況</h2>
+            <div id="homeSummary" class="summary-list"></div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="holdings">
+          <div class="section-card">
+            <h2>現在保有</h2>
+            <div id="holdingsList" class="stack-list"></div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="watchlist">
+          <div class="section-card">
+            <h2>監視銘柄</h2>
+            <div id="watchlistList" class="stack-list"></div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="weekly">
+          <div class="section-card">
+            <h2>週次レビュー</h2>
+            <div id="weeklySummary" class="summary-list"></div>
+            <div class="subsection">
+              <h3>テーマ別</h3>
+              <div id="themeList" class="stack-list"></div>
+            </div>
+            <div class="subsection">
+              <h3>候補</h3>
+              <div id="candidateList" class="stack-list"></div>
+            </div>
+            <div class="subsection">
+              <h3>目標買付額あり</h3>
+              <div id="budgetList" class="stack-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
