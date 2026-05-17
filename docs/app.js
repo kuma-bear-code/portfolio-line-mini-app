@@ -104,9 +104,14 @@
   function renderHome(home) {
     renderSummaryList("homeSummary", [
       ["最終更新", home.updatedAt],
+      ["総資産", home.totalAsset],
       ["真の原資", home.trueCapital],
+      ["増減額", home.gainAmount],
+      ["増減率", home.gainRate],
+      ["現金残高", home.cash],
+      ["保有銘柄数", home.holdingCount],
       ["最大構成", home.maxWeight],
-      ["メモ", home.note]
+      ["監視API", home.watchApiStatus]
     ]);
   }
 
