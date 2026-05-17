@@ -14,10 +14,12 @@
 - `gas/`: Apps Script に入れるコード
 - `docs/`: GitHub Pages にそのまま公開する静的フロント
 - `GUIDE_JA.md`: 日本語の丁寧なセットアップ手順
+- `apps-script/`: Apps Script を機能別に分割した貼り付け用コード
 
 ## まず読むもの
 
 - [GUIDE_JA.md](./GUIDE_JA.md)
+- Apps Script を分割して貼るなら [apps-script/01_Code.gs](./apps-script/01_Code.gs) から順に見てください
 
 ## 補足
 

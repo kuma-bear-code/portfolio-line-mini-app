@@ -25,6 +25,24 @@
 
       <section class="hero-metrics" id="heroMetrics"></section>
 
+      <section class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h2>資産推移</h2>
+            <div id="chartMeta" class="chart-meta">読み込み中</div>
+          </div>
+          <div class="range-toggle" role="tablist" aria-label="期間">
+            <button class="range-btn is-active" data-range="7" type="button">7日</button>
+            <button class="range-btn" data-range="30" type="button">30日</button>
+            <button class="range-btn" data-range="90" type="button">90日</button>
+            <button class="range-btn" data-range="180" type="button">180日</button>
+            <button class="range-btn" data-range="all" type="button">全部</button>
+          </div>
+        </div>
+        <div id="chartSummary" class="chart-summary"></div>
+        <div id="chartContainer" class="chart-container"></div>
+      </section>
+
       <nav class="tabbar" aria-label="sections">
         <button class="tab is-active" data-tab="home" type="button">ホーム</button>
         <button class="tab" data-tab="holdings" type="button">保有</button>
@@ -35,7 +53,7 @@
       <main>
         <section class="panel is-active" data-panel="home">
           <div class="section-card">
-            <h2>今日の状況</h2>
+            <h2>いまの状況</h2>
             <div id="homeSummary" class="summary-list"></div>
           </div>
         </section>
@@ -58,14 +76,17 @@
           <div class="section-card">
             <h2>週次レビュー</h2>
             <div id="weeklySummary" class="summary-list"></div>
+
             <div class="subsection">
               <h3>テーマ別</h3>
               <div id="themeList" class="stack-list"></div>
             </div>
+
             <div class="subsection">
-              <h3>候補</h3>
+              <h3>今週の候補</h3>
               <div id="candidateList" class="stack-list"></div>
             </div>
+
             <div class="subsection">
               <h3>目標買付額あり</h3>
               <div id="budgetList" class="stack-list"></div>
