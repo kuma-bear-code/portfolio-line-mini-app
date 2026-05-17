@@ -1,12 +1,12 @@
 (function () {
-  const state = {
+  var state = {
     data: null,
     range: "30",
     metric: "asset"
   };
 
-  const moneyFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-  const pctFmt = new Intl.NumberFormat("en-US", {
+  var moneyFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+  var pctFmt = new Intl.NumberFormat("en-US", {
     style: "percent",
     minimumFractionDigits: 1,
     maximumFractionDigits: 1
@@ -18,7 +18,7 @@
     bindRanges();
     syncControls();
 
-    const refreshButton = document.getElementById("refreshButton");
+    var refreshButton = document.getElementById("refreshButton");
     if (refreshButton) {
       refreshButton.addEventListener("click", loadApp);
     }
@@ -35,24 +35,9 @@
         document.querySelectorAll(".panel").forEach(function (panel) {
           panel.classList.remove("is-active");
         });
-
         button.classList.add("is-active");
-        const panel = document.querySelector('[data-panel="' + button.dataset.tab + '"]');
+        var panel = document.querySelector('[data-panel="' + button.dataset.tab + '"]');
         if (panel) panel.classList.add("is-active");
-      });
-    });
-  }
-
-  function bindRanges() {
-    document.querySelectorAll(".range-btn").forEach(function (button) {
-      button.addEventListener("click", function () {
-        state.range = button.dataset.range || "30";
-        localStorage.setItem("portfolio.range", state.range);
-        document.querySelectorAll(".range-btn").forEach(function (btn) {
-          btn.classList.remove("is-active");
-        });
-        button.classList.add("is-active");
-        renderChart();
       });
     });
   }
@@ -71,9 +56,23 @@
     });
   }
 
+  function bindRanges() {
+    document.querySelectorAll(".range-btn").forEach(function (button) {
+      button.addEventListener("click", function () {
+        state.range = button.dataset.range || "30";
+        localStorage.setItem("portfolio.range", state.range);
+        document.querySelectorAll(".range-btn").forEach(function (btn) {
+          btn.classList.remove("is-active");
+        });
+        button.classList.add("is-active");
+        renderChart();
+      });
+    });
+  }
+
   function syncControls() {
-    const savedRange = localStorage.getItem("portfolio.range");
-    const savedMetric = localStorage.getItem("portfolio.metric");
+    var savedRange = localStorage.getItem("portfolio.range");
+    var savedMetric = localStorage.getItem("portfolio.metric");
     if (savedRange) state.range = savedRange;
     if (savedMetric) state.metric = savedMetric;
 
@@ -87,7 +86,6 @@
 
   function loadApp() {
     setLoadingState(true);
-
     fetchPortfolioData()
       .then(function (data) {
         state.data = data;
@@ -105,20 +103,20 @@
   }
 
   function fetchPortfolioData() {
-    const baseUrl = (window.PORTFOLIO_APP_CONFIG || {}).apiBaseUrl;
+    var baseUrl = (window.PORTFOLIO_APP_CONFIG || {}).apiBaseUrl;
     if (!baseUrl || baseUrl.indexOf("REPLACE_WITH") >= 0) {
       return Promise.reject(new Error("Apps Script Web App URL is missing."));
     }
 
-    const url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + "api=portfolio";
+    var url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + "api=portfolio";
     return jsonp(url);
   }
 
   function jsonp(url) {
     return new Promise(function (resolve, reject) {
-      const callbackName = "__portfolioCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-      const script = document.createElement("script");
-      let timeoutId = null;
+      var callbackName = "__portfolioCallback_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+      var script = document.createElement("script");
+      var timeoutId = null;
 
       function cleanup() {
         if (timeoutId) clearTimeout(timeoutId);
@@ -163,18 +161,19 @@
     renderHoldings(data.holdings || []);
     renderWatchlist(data.watchlist || []);
     renderWeekly(data.weekly || {});
+    renderAlerts(data.insights || {});
     renderChart();
   }
 
   function renderHero(home) {
-    const metrics = [
+    var metrics = [
       ["Total Asset", home.totalAsset],
       ["Gain", home.gainAmount],
       ["Gain Rate", home.gainRate],
       ["Holdings", home.holdingCount]
     ];
 
-    const target = document.getElementById("heroMetrics");
+    var target = document.getElementById("heroMetrics");
     if (!target) return;
 
     target.innerHTML = metrics.map(function (pair) {
@@ -247,61 +246,104 @@
     renderSimpleRows("budgetList", weekly.budgets || []);
   }
 
+  function renderAlerts(insights) {
+    var el = document.getElementById("alertList");
+    if (!el) return;
+
+    var rows = [];
+    if (insights && (insights.dailyChangeRate !== "" || insights.weeklyChangeRate !== "")) {
+      rows.push('<div class="summary-list compact">');
+      if (insights.dailyChangeRate !== "") {
+        rows.push(
+          '<div class="summary-row"><div class="summary-key">Day change</div><div class="summary-value">' +
+          escapeHtml(formatSignedMoney(insights.dailyChange)) + " / " +
+          escapeHtml(formatPercent(insights.dailyChangeRate)) + "</div></div>"
+        );
+      }
+      if (insights.weeklyChangeRate !== "") {
+        rows.push(
+          '<div class="summary-row"><div class="summary-key">Week change</div><div class="summary-value">' +
+          escapeHtml(formatSignedMoney(insights.weeklyChange)) + " / " +
+          escapeHtml(formatPercent(insights.weeklyChangeRate)) + "</div></div>"
+        );
+      }
+      rows.push("</div>");
+    }
+
+    var alerts = (insights && insights.alerts) || [];
+    if (!alerts.length) {
+      el.innerHTML = rows.join("") + '<div class="empty">No alerts.</div>';
+      return;
+    }
+
+    rows.push('<div class="stack-list">');
+    rows.push(alerts.map(function (alert) {
+      return '<div class="alert-row ' + (alert.level || "info") + '">' +
+        '<div class="alert-title">' + escapeHtml(alert.title || "") + "</div>" +
+        '<div class="alert-body">' + escapeHtml(alert.body || "") + "</div>" +
+        "</div>";
+    }).join(""));
+    rows.push("</div>");
+
+    el.innerHTML = rows.join("");
+  }
+
   function renderChart() {
-    const container = document.getElementById("chartContainer");
-    const meta = document.getElementById("chartMeta");
-    const summary = document.getElementById("chartSummary");
-    const legend = document.getElementById("chartLegend");
+    var container = document.getElementById("chartContainer");
+    var meta = document.getElementById("chartMeta");
+    var summary = document.getElementById("chartSummary");
+    var legend = document.getElementById("chartLegend");
     if (!container || !meta || !summary) return;
 
-    const metric = getChartMetricConfig(state.metric);
-    const snapshots = (state.data && state.data.snapshots) || [];
+    var metric = getChartMetricConfig(state.metric);
+    var snapshots = (state.data && state.data.snapshots) || [];
     if (!snapshots.length) {
-      container.innerHTML = '<div class="empty">まだ資産推移データがありません。</div>';
-      meta.textContent = "スナップショット待ち";
+      container.innerHTML = '<div class="empty">No asset history yet.</div>';
+      meta.textContent = "Waiting for snapshots";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
     }
 
-    const filtered = filterSnapshots(snapshots, state.range);
+    var filtered = filterSnapshots(snapshots, state.range);
     if (!filtered.length) {
-      container.innerHTML = '<div class="empty">この期間のデータがありません。</div>';
-      meta.textContent = "期間内データなし";
+      container.innerHTML = '<div class="empty">No data in this range.</div>';
+      meta.textContent = "No data in range";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
     }
 
-    const points = filtered
-      .map(function (row) {
-        return {
-          date: row.date,
-          value: metric.value(row),
-          capital: toNumber(row.trueCapital)
-        };
-      })
-      .filter(function (row) {
-        return row.date && isFiniteNumber(row.value);
-      });
+    var points = filtered.map(function (row) {
+      return {
+        date: row.date,
+        value: metric.value(row),
+        capital: toNumber(row.trueCapital),
+        asset: toNumber(row.totalAsset),
+        cash: toNumber(row.cash),
+        gainRate: toPercent(row.gainRate)
+      };
+    }).filter(function (row) {
+      return row.date && isFiniteNumber(row.value);
+    });
 
     if (!points.length) {
-      container.innerHTML = '<div class="empty">グラフを描画できませんでした。</div>';
-      meta.textContent = "描画失敗";
+      container.innerHTML = '<div class="empty">Unable to render the chart.</div>';
+      meta.textContent = "Render failed";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
     }
 
-    const values = points.map(function (p) { return p.value; });
-    let min = Math.min.apply(null, values);
-    let max = Math.max.apply(null, values);
+    var values = points.map(function (p) { return p.value; });
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
 
     if (metric.overlay === "trueCapital") {
-      const capitals = points.map(function (p) { return p.capital; }).filter(isFiniteNumber);
-      if (capitals.length) {
-        min = Math.min.apply(null, values.concat(capitals));
-        max = Math.max.apply(null, values.concat(capitals));
+      var caps = points.map(function (p) { return p.capital; }).filter(isFiniteNumber);
+      if (caps.length) {
+        min = Math.min.apply(null, values.concat(caps));
+        max = Math.max.apply(null, values.concat(caps));
       }
     } else if (metric.overlay === "zero") {
       min = Math.min(min, 0);
@@ -309,60 +351,56 @@
     }
 
     if (!isFinite(min) || !isFinite(max)) {
-      container.innerHTML = '<div class="empty">グラフ範囲を計算できませんでした。</div>';
-      meta.textContent = "描画失敗";
+      container.innerHTML = '<div class="empty">Unable to calculate chart bounds.</div>';
+      meta.textContent = "Render failed";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
     }
 
     if (min === max) {
-      const padValue = Math.max(Math.abs(min) * 0.05, metric.unit === "percent" ? 0.01 : 1);
+      var padValue = Math.max(Math.abs(min) * 0.05, metric.unit === "percent" ? 0.01 : 1);
       min -= padValue;
       max += padValue;
     } else {
-      const padValue = (max - min) * 0.08;
-      min -= padValue;
-      max += padValue;
+      var padValue2 = (max - min) * 0.08;
+      min -= padValue2;
+      max += padValue2;
     }
 
-    const range = Math.max(max - min, metric.unit === "percent" ? 0.01 : 1);
-    const width = 1000;
-    const height = 320;
-    const pad = { top: 24, right: 24, bottom: 38, left: 80 };
-    const plotW = width - pad.left - pad.right;
-    const plotH = height - pad.top - pad.bottom;
+    var range = Math.max(max - min, metric.unit === "percent" ? 0.01 : 1);
+    var width = 1000;
+    var height = 320;
+    var pad = { top: 24, right: 24, bottom: 38, left: 80 };
+    var plotW = width - pad.left - pad.right;
+    var plotH = height - pad.top - pad.bottom;
 
-    const svg = [];
+    var svg = [];
     svg.push('<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="Asset trend chart">');
     svg.push('<defs><linearGradient id="assetFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0f5f74" stop-opacity="0.22"></stop><stop offset="100%" stop-color="#0f5f74" stop-opacity="0.02"></stop></linearGradient></defs>');
 
-    for (let i = 0; i <= 4; i++) {
-      const y = pad.top + (plotH / 4) * i;
-      const value = max - (range / 4) * i;
+    for (var i = 0; i <= 4; i++) {
+      var y = pad.top + (plotH / 4) * i;
+      var value = max - (range / 4) * i;
       svg.push('<line x1="' + pad.left + '" y1="' + y + '" x2="' + (width - pad.right) + '" y2="' + y + '" class="chart-grid"></line>');
       svg.push('<text x="' + (pad.left - 10) + '" y="' + (y + 4) + '" text-anchor="end" class="chart-label">' + escapeHtml(metric.axis(value)) + "</text>");
     }
 
-    const areaPath = buildPath(points, pad, plotW, plotH, min, range, true);
-    const linePath = buildPath(points, pad, plotW, plotH, min, range, false);
+    var areaPath = buildPath(points, pad, plotW, plotH, min, range, true);
+    var linePath = buildPath(points, pad, plotW, plotH, min, range, false);
     svg.push('<path d="' + areaPath + '" fill="url(#assetFill)"></path>');
     svg.push('<path d="' + linePath + '" class="chart-line"></path>');
 
     if (metric.overlay === "trueCapital") {
-      const capitalLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function (point) {
+      var capitalLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function (point) {
         return point.capital;
       });
-      if (capitalLine) {
-        svg.push('<path d="' + capitalLine + '" class="chart-capital"></path>');
-      }
+      if (capitalLine) svg.push('<path d="' + capitalLine + '" class="chart-capital"></path>');
     } else if (metric.overlay === "zero" && min <= 0 && max >= 0) {
-      const zeroLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function () {
+      var zeroLine = buildHorizontalLine(points, pad, plotW, plotH, min, range, function () {
         return 0;
       });
-      if (zeroLine) {
-        svg.push('<path d="' + zeroLine + '" class="chart-capital"></path>');
-      }
+      if (zeroLine) svg.push('<path d="' + zeroLine + '" class="chart-capital"></path>');
     }
 
     buildMarkers(points, pad, plotW, plotH, min, range).forEach(function (marker) {
@@ -370,37 +408,37 @@
     });
 
     getXAxisLabels(points).forEach(function (label) {
-      const x = pad.left + (plotW * label.idx / Math.max(points.length - 1, 1));
+      var x = pad.left + (plotW * label.idx / Math.max(points.length - 1, 1));
       svg.push('<text x="' + x + '" y="' + (height - 12) + '" text-anchor="middle" class="chart-label">' + escapeHtml(label.text) + "</text>");
     });
 
     svg.push("</svg>");
     container.innerHTML = svg.join("");
 
-    const first = points[0];
-    const last = points[points.length - 1];
-    const delta = last.value - first.value;
-    const deltaRate = first.value ? delta / Math.abs(first.value) : 0;
-    meta.textContent = metric.label + " / " + filtered[0].date + " から " + filtered[filtered.length - 1].date;
+    var first = points[0];
+    var last = points[points.length - 1];
+    var delta = last.value - first.value;
+    var deltaRate = first.value ? delta / Math.abs(first.value) : 0;
+    meta.textContent = metric.label + " / " + filtered[0].date + " to " + filtered[filtered.length - 1].date;
     summary.innerHTML = [
-      pill("開始", metric.format(first.value)),
-      pill("現在", metric.format(last.value)),
-      pill(delta >= 0 ? "差分 +" + metric.format(delta) : "差分 " + metric.format(delta), null, delta >= 0 ? "good" : "warn"),
+      pill("Start", metric.format(first.value)),
+      pill("Current", metric.format(last.value)),
+      pill(delta >= 0 ? "Change +" + metric.format(delta) : "Change " + metric.format(delta), null, delta >= 0 ? "good" : "warn"),
       pill(formatPercent(deltaRate), null, delta >= 0 ? "good" : "warn")
     ].join("");
 
     if (legend) {
       legend.innerHTML = [
-        '<span class="legend-item"><span class="legend-swatch asset"></span>' + escapeHtml(metric.label) + '</span>',
+        '<span class="legend-item"><span class="legend-swatch asset"></span>' + escapeHtml(metric.label) + "</span>",
         metric.overlay === "trueCapital"
-          ? '<span class="legend-item"><span class="legend-swatch capital"></span>真の原資</span>'
-          : '<span class="legend-item"><span class="legend-swatch zero"></span>基準線</span>'
+          ? '<span class="legend-item"><span class="legend-swatch capital"></span>True Capital</span>'
+          : '<span class="legend-item"><span class="legend-swatch zero"></span>Baseline</span>'
       ].join("");
     }
   }
 
   function filterSnapshots(snapshots, range) {
-    const sorted = snapshots
+    var sorted = snapshots
       .map(function (row) {
         return {
           date: row.date,
@@ -412,21 +450,19 @@
         return row.date;
       })
       .sort(function (a, b) {
-        const da = parseDate(a.date);
-        const db = parseDate(b.date);
+        var da = parseDate(a.date);
+        var db = parseDate(b.date);
         return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
       });
 
-    if (range === "all") {
-      return sorted;
-    }
+    if (range === "all") return sorted;
 
-    const days = Number(range) || 30;
-    const cutoff = startOfDay(new Date());
+    var days = Number(range) || 30;
+    var cutoff = startOfDay(new Date());
     cutoff.setDate(cutoff.getDate() - (days - 1));
 
     return sorted.filter(function (row) {
-      const d = parseDate(row.date);
+      var d = parseDate(row.date);
       return d && d >= cutoff;
     });
   }
@@ -434,14 +470,14 @@
   function buildPath(points, pad, plotW, plotH, min, range, area) {
     if (!points.length) return "";
 
-    const coords = points.map(function (p, idx) {
-      const x = pad.left + (plotW * idx / Math.max(points.length - 1, 1));
-      const y = pad.top + plotH - ((p.value - min) / range) * plotH;
+    var coords = points.map(function (p, idx) {
+      var x = pad.left + (plotW * idx / Math.max(points.length - 1, 1));
+      var y = pad.top + plotH - ((p.value - min) / range) * plotH;
       return [x, y];
     });
 
-    let d = "M " + coords[0][0] + " " + coords[0][1];
-    for (let i = 1; i < coords.length; i++) {
+    var d = "M " + coords[0][0] + " " + coords[0][1];
+    for (var i = 1; i < coords.length; i++) {
       d += " L " + coords[i][0] + " " + coords[i][1];
     }
 
@@ -454,29 +490,29 @@
   }
 
   function buildHorizontalLine(points, pad, plotW, plotH, min, range, valueGetter) {
-    const sample = points[0];
-    const capital = toNumber(valueGetter ? valueGetter(sample) : sample && sample.capital);
-    if (!isFiniteNumber(capital)) return "";
-    const y = pad.top + plotH - ((capital - min) / range) * plotH;
+    var sample = points[0];
+    var value = toNumber(valueGetter ? valueGetter(sample) : sample && sample.capital);
+    if (!isFiniteNumber(value)) return "";
+    var y = pad.top + plotH - ((value - min) / range) * plotH;
     return "M " + pad.left + " " + y + " L " + (pad.left + plotW) + " " + y;
   }
 
   function buildMarkers(points, pad, plotW, plotH, min, range) {
-    const out = [];
-    const step = Math.max(Math.floor(points.length / 6), 1);
+    var out = [];
+    var step = Math.max(Math.floor(points.length / 6), 1);
 
-    for (let i = 0; i < points.length; i += step) {
-      const p = points[i];
-      const x = pad.left + (plotW * i / Math.max(points.length - 1, 1));
-      const y = pad.top + plotH - ((p.value - min) / range) * plotH;
+    for (var i = 0; i < points.length; i += step) {
+      var p = points[i];
+      var x = pad.left + (plotW * i / Math.max(points.length - 1, 1));
+      var y = pad.top + plotH - ((p.value - min) / range) * plotH;
       out.push('<circle cx="' + x + '" cy="' + y + '" r="3.5" class="chart-dot"></circle>');
     }
 
     if (points.length > 1 && (points.length - 1) % step !== 0) {
-      const last = points[points.length - 1];
-      const x = pad.left + plotW;
-      const y = pad.top + plotH - ((last.value - min) / range) * plotH;
-      out.push('<circle cx="' + x + '" cy="' + y + '" r="3.5" class="chart-dot"></circle>');
+      var last = points[points.length - 1];
+      var x2 = pad.left + plotW;
+      var y2 = pad.top + plotH - ((last.value - min) / range) * plotH;
+      out.push('<circle cx="' + x2 + '" cy="' + y2 + '" r="3.5" class="chart-dot"></circle>');
     }
 
     return out;
@@ -489,9 +525,8 @@
       });
     }
 
-    const picks = [0, Math.floor((points.length - 1) / 2), points.length - 1];
-    const seen = {};
-
+    var picks = [0, Math.floor((points.length - 1) / 2), points.length - 1];
+    var seen = {};
     return picks.map(function (idx) {
       if (seen[idx]) return null;
       seen[idx] = true;
@@ -503,7 +538,7 @@
     switch (metric) {
       case "gain":
         return {
-          label: "損益",
+          label: "Gain",
           unit: "money",
           value: function (row) { return toNumber(row.gainAmount); },
           axis: formatCompact,
@@ -512,7 +547,7 @@
         };
       case "cash":
         return {
-          label: "現金",
+          label: "Cash",
           unit: "money",
           value: function (row) { return toNumber(row.cash); },
           axis: formatCompact,
@@ -521,7 +556,7 @@
         };
       case "holdings":
         return {
-          label: "保有評価",
+          label: "Holdings Value",
           unit: "money",
           value: function (row) { return toNumber(row.totalAsset) - toNumber(row.cash); },
           axis: formatCompact,
@@ -530,7 +565,7 @@
         };
       case "gainRate":
         return {
-          label: "損益率",
+          label: "Gain Rate",
           unit: "percent",
           value: function (row) { return toPercent(row.gainRate); },
           axis: formatPercent,
@@ -539,7 +574,7 @@
         };
       case "trueCapital":
         return {
-          label: "真の原資",
+          label: "True Capital",
           unit: "money",
           value: function (row) { return toNumber(row.trueCapital); },
           axis: formatCompact,
@@ -549,7 +584,7 @@
       case "asset":
       default:
         return {
-          label: "総資産",
+          label: "Total Asset",
           unit: "money",
           value: function (row) { return toNumber(row.totalAsset); },
           axis: formatCompact,
@@ -560,25 +595,22 @@
   }
 
   function toPercent(value) {
-    if (typeof value === "number" && isFinite(value)) {
-      return value;
-    }
-    const text = String(value == null ? "" : value).trim();
+    if (typeof value === "number" && isFinite(value)) return value;
+    var text = String(value == null ? "" : value).trim();
     if (!text) return NaN;
-    const parsed = Number(text.replace(/%/g, "").replace(/,/g, ""));
+    var parsed = Number(text.replace(/%/g, "").replace(/,/g, ""));
     if (!isFinite(parsed)) return NaN;
     return parsed / 100;
   }
 
   function pill(text, value, tone) {
-    const cls = tone ? "summary-pill " + tone : "summary-pill";
+    var cls = tone ? "summary-pill " + tone : "summary-pill";
     return '<span class="' + cls + '">' + escapeHtml(text) + (value ? " " + escapeHtml(value) : "") + "</span>";
   }
 
   function renderSummaryList(id, rows) {
-    const el = document.getElementById(id);
+    var el = document.getElementById(id);
     if (!el) return;
-
     el.innerHTML = rows.map(function (pair) {
       return '<div class="summary-row"><div class="summary-key">' + escapeHtml(pair[0]) +
         '</div><div class="summary-value">' + escapeHtml(displayValue(pair[1]) || "-") + "</div></div>";
@@ -586,28 +618,24 @@
   }
 
   function renderCardList(id, items, renderer) {
-    const el = document.getElementById(id);
+    var el = document.getElementById(id);
     if (!el) return;
-
     if (!items.length) {
       el.innerHTML = '<div class="empty">No data yet.</div>';
       return;
     }
-
     el.innerHTML = items.map(function (item) {
       return '<div class="list-item">' + renderer(item) + "</div>";
     }).join("");
   }
 
   function renderSimpleRows(id, rows) {
-    const el = document.getElementById(id);
+    var el = document.getElementById(id);
     if (!el) return;
-
     if (!rows.length) {
       el.innerHTML = '<div class="empty">No data yet.</div>';
       return;
     }
-
     el.innerHTML = rows.map(function (row) {
       return '<div class="list-item"><div class="list-grid">' + row.map(function (cell, idx) {
         return '<div><div class="list-k">Item ' + (idx + 1) + '</div><div class="list-v">' + escapeHtml(cell) + "</div></div>";
@@ -620,32 +648,29 @@
   }
 
   function judgeClass(value) {
-    const text = String(value || "");
+    var text = String(value || "");
     if (!text) return "";
-    if (/\u8cb7|\u597d|\u4e0a\u6607/.test(text)) return "good";
-    if (/\u6ce8\u610f|\u4e0b\u843d|\u58f2/.test(text)) return "warn";
+    if (/buy|good|up/i.test(text)) return "good";
+    if (/watch|warn|down|sell/i.test(text)) return "warn";
     return "";
   }
 
   function setLoadingState(isLoading) {
-    const button = document.getElementById("refreshButton");
+    var button = document.getElementById("refreshButton");
     if (!button) return;
-
     button.disabled = isLoading;
     button.textContent = isLoading ? "…" : "↻";
   }
 
   function renderError(error) {
-    const message = error && error.message ? error.message : String(error || "Load failed");
-
-    const hero = document.getElementById("heroMetrics");
+    var message = error && error.message ? error.message : String(error || "Load failed");
+    var hero = document.getElementById("heroMetrics");
     if (hero) {
       hero.innerHTML =
         '<div class="metric-card"><div class="metric-label">Error</div><div class="metric-value">' +
         escapeHtml(message) + "</div></div>";
     }
-
-    const chart = document.getElementById("chartContainer");
+    var chart = document.getElementById("chartContainer");
     if (chart) {
       chart.innerHTML = '<div class="empty">' + escapeHtml(message) + "</div>";
     }
@@ -656,6 +681,12 @@
     return String(value);
   }
 
+  function formatSignedMoney(value) {
+    var n = toNumber(value);
+    if (!isFiniteNumber(n)) return "-";
+    return (n >= 0 ? "+" : "") + formatNumber(Math.abs(n));
+  }
+
   function formatNumber(value) {
     if (!isFiniteNumber(value)) return "-";
     return moneyFmt.format(Math.round(value));
@@ -663,10 +694,10 @@
 
   function formatCompact(value) {
     if (!isFiniteNumber(value)) return "-";
-    const abs = Math.abs(value);
+    var abs = Math.abs(value);
     if (abs >= 100000000) return (value / 100000000).toFixed(1) + "億";
     if (abs >= 10000) return (value / 10000).toFixed(1) + "万";
-    if (abs >= 1000) return (value / 1000).toFixed(1) + "千";
+    if (abs >= 1000) return (value / 1000).toFixed(1) + "k";
     return moneyFmt.format(Math.round(value));
   }
 
@@ -676,7 +707,7 @@
   }
 
   function toNumber(value) {
-    const n = Number(String(value || "").replace(/,/g, ""));
+    var n = Number(String(value || "").replace(/,/g, ""));
     return isFinite(n) ? n : NaN;
   }
 
@@ -686,18 +717,18 @@
 
   function parseDate(text) {
     if (!text) return null;
-    const s = String(text).trim().replace(/-/g, "/");
-    const parts = s.split("/");
+    var s = String(text).trim().replace(/-/g, "/");
+    var parts = s.split("/");
     if (parts.length < 3) return null;
-    const y = Number(parts[0]);
-    const m = Number(parts[1]) - 1;
-    const d = Number(parts[2]);
-    const date = new Date(y, m, d);
+    var y = Number(parts[0]);
+    var m = Number(parts[1]) - 1;
+    var d = Number(parts[2]);
+    var date = new Date(y, m, d);
     return isNaN(date.getTime()) ? null : startOfDay(date);
   }
 
   function startOfDay(date) {
-    const d = new Date(date);
+    var d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d;
   }

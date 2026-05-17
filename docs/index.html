@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>株ポートフォリオ</title>
+    <title>Portfolio</title>
     <link rel="stylesheet" href="./styles.css">
     <script>
       window.PORTFOLIO_APP_CONFIG = {
@@ -18,9 +18,9 @@
       <header class="topbar">
         <div>
           <div class="eyebrow">LINE Mini App</div>
-          <h1>株ポートフォリオ</h1>
+          <h1>Portfolio</h1>
         </div>
-        <button id="refreshButton" class="icon-button" type="button" aria-label="更新">↻</button>
+        <button id="refreshButton" class="icon-button" type="button" aria-label="Refresh">↻</button>
       </header>
 
       <section class="hero-metrics" id="heroMetrics"></section>
@@ -28,25 +28,25 @@
       <section class="chart-card">
         <div class="chart-head">
           <div>
-            <h2>資産推移</h2>
-            <div id="chartMeta" class="chart-meta">読み込み中</div>
+            <h2>Asset Trend</h2>
+            <div id="chartMeta" class="chart-meta">Loading...</div>
           </div>
-          <div class="toggle-group" aria-label="表示切替">
-            <div class="toggle-label">表示</div>
-            <div class="metric-toggle" role="tablist" aria-label="表示項目">
-              <button class="metric-btn is-active" data-metric="asset" type="button">総資産</button>
-              <button class="metric-btn" data-metric="gain" type="button">損益</button>
-              <button class="metric-btn" data-metric="cash" type="button">現金</button>
-              <button class="metric-btn" data-metric="holdings" type="button">保有評価</button>
-              <button class="metric-btn" data-metric="gainRate" type="button">損益率</button>
+          <div class="toggle-group" aria-label="Chart controls">
+            <div class="toggle-label">Metric</div>
+            <div class="metric-toggle" role="tablist" aria-label="Metric">
+              <button class="metric-btn is-active" data-metric="asset" type="button">Total Asset</button>
+              <button class="metric-btn" data-metric="gain" type="button">Gain</button>
+              <button class="metric-btn" data-metric="cash" type="button">Cash</button>
+              <button class="metric-btn" data-metric="holdings" type="button">Holdings Value</button>
+              <button class="metric-btn" data-metric="gainRate" type="button">Gain Rate</button>
             </div>
-            <div class="toggle-label">期間</div>
-            <div class="range-toggle" role="tablist" aria-label="期間">
-              <button class="range-btn is-active" data-range="7" type="button">7日</button>
-              <button class="range-btn" data-range="30" type="button">30日</button>
-              <button class="range-btn" data-range="90" type="button">90日</button>
-              <button class="range-btn" data-range="180" type="button">180日</button>
-              <button class="range-btn" data-range="all" type="button">全部</button>
+            <div class="toggle-label">Range</div>
+            <div class="range-toggle" role="tablist" aria-label="Range">
+              <button class="range-btn is-active" data-range="7" type="button">7d</button>
+              <button class="range-btn" data-range="30" type="button">30d</button>
+              <button class="range-btn" data-range="90" type="button">90d</button>
+              <button class="range-btn" data-range="180" type="button">180d</button>
+              <button class="range-btn" data-range="all" type="button">All</button>
             </div>
           </div>
         </div>
@@ -55,52 +55,59 @@
         <div id="chartContainer" class="chart-container"></div>
       </section>
 
+      <section class="alert-card">
+        <div class="section-head">
+          <h2>Alerts</h2>
+        </div>
+        <div id="alertList" class="stack-list"></div>
+      </section>
+
       <nav class="tabbar" aria-label="sections">
-        <button class="tab is-active" data-tab="home" type="button">ホーム</button>
-        <button class="tab" data-tab="holdings" type="button">保有</button>
-        <button class="tab" data-tab="watchlist" type="button">監視</button>
-        <button class="tab" data-tab="weekly" type="button">週次</button>
+        <button class="tab is-active" data-tab="home" type="button">Home</button>
+        <button class="tab" data-tab="holdings" type="button">Holdings</button>
+        <button class="tab" data-tab="watchlist" type="button">Watch</button>
+        <button class="tab" data-tab="weekly" type="button">Weekly</button>
       </nav>
 
       <main>
         <section class="panel is-active" data-panel="home">
           <div class="section-card">
-            <h2>いまの状況</h2>
+            <h2>Status</h2>
             <div id="homeSummary" class="summary-list"></div>
           </div>
         </section>
 
         <section class="panel" data-panel="holdings">
           <div class="section-card">
-            <h2>現在保有</h2>
+            <h2>Current Holdings</h2>
             <div id="holdingsList" class="stack-list"></div>
           </div>
         </section>
 
         <section class="panel" data-panel="watchlist">
           <div class="section-card">
-            <h2>監視銘柄</h2>
+            <h2>Watchlist</h2>
             <div id="watchlistList" class="stack-list"></div>
           </div>
         </section>
 
         <section class="panel" data-panel="weekly">
           <div class="section-card">
-            <h2>週次レビュー</h2>
+            <h2>Weekly Review</h2>
             <div id="weeklySummary" class="summary-list"></div>
 
             <div class="subsection">
-              <h3>テーマ別</h3>
+              <h3>Themes</h3>
               <div id="themeList" class="stack-list"></div>
             </div>
 
             <div class="subsection">
-              <h3>今週の候補</h3>
+              <h3>Candidates</h3>
               <div id="candidateList" class="stack-list"></div>
             </div>
 
             <div class="subsection">
-              <h3>目標買付額あり</h3>
+              <h3>Budgeted</h3>
               <div id="budgetList" class="stack-list"></div>
             </div>
           </div>
