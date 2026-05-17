@@ -4,7 +4,7 @@ var CONFIG = {
   API_PRICE_SHEET: "API価格取得・評価額",
   WATCH_SUMMARY_SHEET: "監視集計",
   WEEKLY_REVIEW_SHEET: "週次レビュー",
-  LIFF_ID: "REPLACE_WITH_YOUR_LIFF_ID"
+  LIFF_ID: "2010108717-qrydg64H"
 };
 
 function doGet() {
