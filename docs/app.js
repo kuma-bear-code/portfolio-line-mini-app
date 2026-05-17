@@ -5,8 +5,8 @@
     metric: "asset"
   };
 
-  var moneyFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-  var pctFmt = new Intl.NumberFormat("en-US", {
+  var moneyFmt = new Intl.NumberFormat("ja-JP", { maximumFractionDigits: 0 });
+  var pctFmt = new Intl.NumberFormat("ja-JP", {
     style: "percent",
     minimumFractionDigits: 1,
     maximumFractionDigits: 1
@@ -105,7 +105,7 @@
   function fetchPortfolioData() {
     var baseUrl = (window.PORTFOLIO_APP_CONFIG || {}).apiBaseUrl;
     if (!baseUrl || baseUrl.indexOf("REPLACE_WITH") >= 0) {
-      return Promise.reject(new Error("Apps Script Web App URL is missing."));
+      return Promise.reject(new Error("Apps Script の Web App URL が未設定です。"));
     }
 
     var url = baseUrl + (baseUrl.indexOf("?") >= 0 ? "&" : "?") + "api=portfolio";
@@ -135,12 +135,12 @@
 
       script.onerror = function () {
         cleanup();
-        reject(new Error("Failed to load portfolio data."));
+        reject(new Error("ポートフォリオデータの読み込みに失敗しました。"));
       };
 
       timeoutId = setTimeout(function () {
         cleanup();
-        reject(new Error("Portfolio request timed out."));
+        reject(new Error("ポートフォリオデータの読み込みがタイムアウトしました。"));
       }, 15000);
 
       script.src = url + "&callback=" + callbackName;
@@ -167,10 +167,10 @@
 
   function renderHero(home) {
     var metrics = [
-      ["Total Asset", home.totalAsset],
-      ["Gain", home.gainAmount],
-      ["Gain Rate", home.gainRate],
-      ["Holdings", home.holdingCount]
+      ["総資産", home.totalAsset],
+      ["損益", home.gainAmount],
+      ["損益率", home.gainRate],
+      ["保有銘柄数", home.holdingCount]
     ];
 
     var target = document.getElementById("heroMetrics");
@@ -185,17 +185,17 @@
 
   function renderHome(home) {
     renderSummaryList("homeSummary", [
-      ["Updated", home.updatedAt],
-      ["Total Asset", home.totalAsset],
-      ["True Capital", home.trueCapital],
-      ["Gain", home.gainAmount],
-      ["Gain Rate", home.gainRate],
-      ["Cash", home.cash],
-      ["Holdings", home.holdingCount],
-      ["Max Weight", home.maxWeight],
-      ["Max Weight Rate", home.maxWeightRate],
-      ["Price API", home.apiStatus],
-      ["Watch API", home.watchApiStatus]
+      ["最終更新", home.updatedAt],
+      ["総資産", home.totalAsset],
+      ["真の原資", home.trueCapital],
+      ["損益", home.gainAmount],
+      ["損益率", home.gainRate],
+      ["現金", home.cash],
+      ["保有銘柄数", home.holdingCount],
+      ["最大構成", home.maxWeight],
+      ["最大構成比", home.maxWeightRate],
+      ["価格API", home.apiStatus],
+      ["監視API", home.watchApiStatus]
     ]);
   }
 
@@ -204,12 +204,12 @@
       return ""
         + '<div class="list-item-title"><div><div class="list-item-name">' + escapeHtml(item.name || "") + "</div>"
         + '<div class="list-item-code">' + escapeHtml(item.code || "") + "</div></div>"
-        + '<span class="pill">' + escapeHtml(item.type || "Holding") + "</span></div>"
+        + '<span class="pill">' + escapeHtml(item.type || "保有") + "</span></div>"
         + '<div class="list-grid">'
-        + kv("Qty", item.qty)
-        + kv("Value", item.valueJpy)
-        + kv("Price", item.priceJpy)
-        + kv("Broker", item.broker)
+        + kv("数量", item.qty)
+        + kv("評価額", item.valueJpy)
+        + kv("単価", item.priceJpy)
+        + kv("証券会社", item.broker)
         + "</div>"
         + (item.memo ? '<div class="item-memo">' + escapeHtml(item.memo) + "</div>" : "");
     });
@@ -221,24 +221,24 @@
         + '<div class="list-item-title"><div><div class="list-item-name">' + escapeHtml(item.name || "") + "</div>"
         + '<div class="list-item-code">' + escapeHtml(item.code || "") + "</div></div>"
         + '<span class="pill ' + judgeClass(item.autoJudge) + '">' +
-        escapeHtml(item.autoJudge || item.manualHint || "Watching") + "</span></div>"
+        escapeHtml(item.autoJudge || item.manualHint || "監視中") + "</span></div>"
         + '<div class="list-grid">'
-        + kv("Theme", item.theme)
-        + kv("Price", item.currentPrice)
-        + kv("Change", item.changeRate)
-        + kv("Budget", item.targetBudget)
-        + kv("Diff", item.diff)
-        + kv("Review", item.reviewPoint || item.manualHint)
+        + kv("テーマ", item.theme)
+        + kv("現在価格", item.currentPrice)
+        + kv("騰落率", item.changeRate)
+        + kv("目標買付額", item.targetBudget)
+        + kv("差額", item.diff)
+        + kv("レビュー", item.reviewPoint || item.manualHint)
         + "</div>";
     });
   }
 
   function renderWeekly(weekly) {
     renderSummaryList("weeklySummary", [
-      ["Updated", weekly.updatedAt],
-      ["Watch Count", weekly.watchCount],
-      ["Dip Count", weekly.dipCount],
-      ["Memo", weekly.memo]
+      ["最終更新", weekly.updatedAt],
+      ["監視銘柄数", weekly.watchCount],
+      ["押し目候補数", weekly.dipCount],
+      ["メモ", weekly.memo]
     ]);
 
     renderSimpleRows("themeList", weekly.themes || []);
@@ -255,14 +255,14 @@
       rows.push('<div class="summary-list compact">');
       if (insights.dailyChangeRate !== "") {
         rows.push(
-          '<div class="summary-row"><div class="summary-key">Day change</div><div class="summary-value">' +
+          '<div class="summary-row"><div class="summary-key">前日比</div><div class="summary-value">' +
           escapeHtml(formatSignedMoney(insights.dailyChange)) + " / " +
           escapeHtml(formatPercent(insights.dailyChangeRate)) + "</div></div>"
         );
       }
       if (insights.weeklyChangeRate !== "") {
         rows.push(
-          '<div class="summary-row"><div class="summary-key">Week change</div><div class="summary-value">' +
+          '<div class="summary-row"><div class="summary-key">週次比</div><div class="summary-value">' +
           escapeHtml(formatSignedMoney(insights.weeklyChange)) + " / " +
           escapeHtml(formatPercent(insights.weeklyChangeRate)) + "</div></div>"
         );
@@ -272,7 +272,7 @@
 
     var alerts = (insights && insights.alerts) || [];
     if (!alerts.length) {
-      el.innerHTML = rows.join("") + '<div class="empty">No alerts.</div>';
+      el.innerHTML = rows.join("") + '<div class="empty">アラートはありません。</div>';
       return;
     }
 
@@ -298,8 +298,8 @@
     var metric = getChartMetricConfig(state.metric);
     var snapshots = (state.data && state.data.snapshots) || [];
     if (!snapshots.length) {
-      container.innerHTML = '<div class="empty">No asset history yet.</div>';
-      meta.textContent = "Waiting for snapshots";
+      container.innerHTML = '<div class="empty">まだ資産推移データがありません。</div>';
+      meta.textContent = "スナップショット待ち";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
@@ -307,8 +307,8 @@
 
     var filtered = filterSnapshots(snapshots, state.range);
     if (!filtered.length) {
-      container.innerHTML = '<div class="empty">No data in this range.</div>';
-      meta.textContent = "No data in range";
+      container.innerHTML = '<div class="empty">この期間のデータがありません。</div>';
+      meta.textContent = "期間内データなし";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
@@ -328,8 +328,8 @@
     });
 
     if (!points.length) {
-      container.innerHTML = '<div class="empty">Unable to render the chart.</div>';
-      meta.textContent = "Render failed";
+      container.innerHTML = '<div class="empty">グラフを描画できませんでした。</div>';
+      meta.textContent = "描画失敗";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
@@ -351,8 +351,8 @@
     }
 
     if (!isFinite(min) || !isFinite(max)) {
-      container.innerHTML = '<div class="empty">Unable to calculate chart bounds.</div>';
-      meta.textContent = "Render failed";
+      container.innerHTML = '<div class="empty">グラフ範囲を計算できませんでした。</div>';
+      meta.textContent = "描画失敗";
       summary.innerHTML = "";
       if (legend) legend.innerHTML = "";
       return;
@@ -376,7 +376,7 @@
     var plotH = height - pad.top - pad.bottom;
 
     var svg = [];
-    svg.push('<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="Asset trend chart">');
+    svg.push('<svg viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none" role="img" aria-label="資産推移グラフ">');
     svg.push('<defs><linearGradient id="assetFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0f5f74" stop-opacity="0.22"></stop><stop offset="100%" stop-color="#0f5f74" stop-opacity="0.02"></stop></linearGradient></defs>');
 
     for (var i = 0; i <= 4; i++) {
@@ -419,11 +419,11 @@
     var last = points[points.length - 1];
     var delta = last.value - first.value;
     var deltaRate = first.value ? delta / Math.abs(first.value) : 0;
-    meta.textContent = metric.label + " / " + filtered[0].date + " to " + filtered[filtered.length - 1].date;
+    meta.textContent = metric.label + " / " + filtered[0].date + " から " + filtered[filtered.length - 1].date;
     summary.innerHTML = [
-      pill("Start", metric.format(first.value)),
-      pill("Current", metric.format(last.value)),
-      pill(delta >= 0 ? "Change +" + metric.format(delta) : "Change " + metric.format(delta), null, delta >= 0 ? "good" : "warn"),
+      pill("開始", metric.format(first.value)),
+      pill("現在", metric.format(last.value)),
+      pill(delta >= 0 ? "差分 +" + metric.format(delta) : "差分 " + metric.format(delta), null, delta >= 0 ? "good" : "warn"),
       pill(formatPercent(deltaRate), null, delta >= 0 ? "good" : "warn")
     ].join("");
 
@@ -431,8 +431,8 @@
       legend.innerHTML = [
         '<span class="legend-item"><span class="legend-swatch asset"></span>' + escapeHtml(metric.label) + "</span>",
         metric.overlay === "trueCapital"
-          ? '<span class="legend-item"><span class="legend-swatch capital"></span>True Capital</span>'
-          : '<span class="legend-item"><span class="legend-swatch zero"></span>Baseline</span>'
+          ? '<span class="legend-item"><span class="legend-swatch capital"></span>真の原資</span>'
+          : '<span class="legend-item"><span class="legend-swatch zero"></span>基準線</span>'
       ].join("");
     }
   }
@@ -538,7 +538,7 @@
     switch (metric) {
       case "gain":
         return {
-          label: "Gain",
+          label: "損益",
           unit: "money",
           value: function (row) { return toNumber(row.gainAmount); },
           axis: formatCompact,
@@ -547,7 +547,7 @@
         };
       case "cash":
         return {
-          label: "Cash",
+          label: "現金",
           unit: "money",
           value: function (row) { return toNumber(row.cash); },
           axis: formatCompact,
@@ -556,7 +556,7 @@
         };
       case "holdings":
         return {
-          label: "Holdings Value",
+          label: "保有評価",
           unit: "money",
           value: function (row) { return toNumber(row.totalAsset) - toNumber(row.cash); },
           axis: formatCompact,
@@ -565,7 +565,7 @@
         };
       case "gainRate":
         return {
-          label: "Gain Rate",
+          label: "損益率",
           unit: "percent",
           value: function (row) { return toPercent(row.gainRate); },
           axis: formatPercent,
@@ -574,7 +574,7 @@
         };
       case "trueCapital":
         return {
-          label: "True Capital",
+          label: "真の原資",
           unit: "money",
           value: function (row) { return toNumber(row.trueCapital); },
           axis: formatCompact,
@@ -584,7 +584,7 @@
       case "asset":
       default:
         return {
-          label: "Total Asset",
+          label: "総資産",
           unit: "money",
           value: function (row) { return toNumber(row.totalAsset); },
           axis: formatCompact,
@@ -621,7 +621,7 @@
     var el = document.getElementById(id);
     if (!el) return;
     if (!items.length) {
-      el.innerHTML = '<div class="empty">No data yet.</div>';
+      el.innerHTML = '<div class="empty">まだデータがありません。</div>';
       return;
     }
     el.innerHTML = items.map(function (item) {
@@ -633,12 +633,12 @@
     var el = document.getElementById(id);
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = '<div class="empty">No data yet.</div>';
+      el.innerHTML = '<div class="empty">まだデータがありません。</div>';
       return;
     }
     el.innerHTML = rows.map(function (row) {
       return '<div class="list-item"><div class="list-grid">' + row.map(function (cell, idx) {
-        return '<div><div class="list-k">Item ' + (idx + 1) + '</div><div class="list-v">' + escapeHtml(cell) + "</div></div>";
+        return '<div><div class="list-k">項目 ' + (idx + 1) + '</div><div class="list-v">' + escapeHtml(cell) + "</div></div>";
       }).join("") + "</div></div>";
     }).join("");
   }
@@ -650,8 +650,8 @@
   function judgeClass(value) {
     var text = String(value || "");
     if (!text) return "";
-    if (/buy|good|up/i.test(text)) return "good";
-    if (/watch|warn|down|sell/i.test(text)) return "warn";
+    if (/買|好|上昇/.test(text)) return "good";
+    if (/注意|警戒|下落|売/.test(text)) return "warn";
     return "";
   }
 
@@ -663,11 +663,11 @@
   }
 
   function renderError(error) {
-    var message = error && error.message ? error.message : String(error || "Load failed");
+    var message = error && error.message ? error.message : String(error || "読み込みに失敗しました");
     var hero = document.getElementById("heroMetrics");
     if (hero) {
       hero.innerHTML =
-        '<div class="metric-card"><div class="metric-label">Error</div><div class="metric-value">' +
+        '<div class="metric-card"><div class="metric-label">エラー</div><div class="metric-value">' +
         escapeHtml(message) + "</div></div>";
     }
     var chart = document.getElementById("chartContainer");
@@ -676,15 +676,15 @@
     }
   }
 
-  function displayValue(value) {
-    if (value == null || value === "") return "";
-    return String(value);
-  }
-
   function formatSignedMoney(value) {
     var n = toNumber(value);
     if (!isFiniteNumber(n)) return "-";
     return (n >= 0 ? "+" : "") + formatNumber(Math.abs(n));
+  }
+
+  function displayValue(value) {
+    if (value == null || value === "") return "";
+    return String(value);
   }
 
   function formatNumber(value) {
@@ -697,7 +697,7 @@
     var abs = Math.abs(value);
     if (abs >= 100000000) return (value / 100000000).toFixed(1) + "億";
     if (abs >= 10000) return (value / 10000).toFixed(1) + "万";
-    if (abs >= 1000) return (value / 1000).toFixed(1) + "k";
+    if (abs >= 1000) return (value / 1000).toFixed(1) + "千";
     return moneyFmt.format(Math.round(value));
   }
 

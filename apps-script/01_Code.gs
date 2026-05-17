@@ -128,8 +128,8 @@ function getSnapshotInsights_(ss) {
       alerts: [
         {
           level: "info",
-          title: "No snapshot data yet",
-          body: "Daily snapshots will appear after the next update."
+          title: "スナップショット未取得",
+          body: "次回更新後に日次スナップショットが表示されます。"
         }
       ]
     };
@@ -147,32 +147,32 @@ function getSnapshotInsights_(ss) {
   if (isNumber_(dailyChangeRate) && Math.abs(dailyChangeRate) >= 0.03) {
     alerts.push({
       level: Math.abs(dailyChangeRate) >= 0.05 ? "critical" : "warn",
-      title: "Daily change alert",
-      body: "Total asset moved by " + formatSignedPercent_(dailyChangeRate) + " since yesterday."
+      title: "前日比アラート",
+      body: "総資産が前日比 " + formatSignedPercent_(dailyChangeRate) + " です。"
     });
   }
 
   if (isNumber_(weeklyChangeRate) && Math.abs(weeklyChangeRate) >= 0.05) {
     alerts.push({
       level: Math.abs(weeklyChangeRate) >= 0.10 ? "critical" : "warn",
-      title: "Weekly change alert",
-      body: "Total asset moved by " + formatSignedPercent_(weeklyChangeRate) + " over the last 7 days."
+      title: "週次比アラート",
+      body: "総資産が直近7日で " + formatSignedPercent_(weeklyChangeRate) + " です。"
     });
   }
 
   if (isNumber_(latest.gainRate) && latest.gainRate <= -0.05) {
     alerts.push({
       level: "warn",
-      title: "Loss alert",
-      body: "Current gain rate is " + formatSignedPercent_(latest.gainRate) + "."
+      title: "損益率注意",
+      body: "現在の損益率は " + formatSignedPercent_(latest.gainRate) + " です。"
     });
   }
 
   if (isNumber_(latest.watchCount) && latest.watchCount > 0) {
     alerts.push({
       level: "info",
-      title: "Watching " + latest.watchCount + " names",
-      body: "Use the watchlist for timing and budget checks."
+      title: "監視銘柄 " + latest.watchCount + "件",
+      body: "監視銘柄一覧でタイミングと予算を確認できます。"
     });
   }
 
