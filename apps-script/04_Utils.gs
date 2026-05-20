@@ -155,7 +155,7 @@ function getTableValues_(sheet, startRow, startCol, numCols) {
 }
 
 function getOrCreateSheet_(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getPortfolioSpreadsheet_();
   var sheet = ss.getSheetByName(name);
 
   if (!sheet) {
@@ -163,6 +163,10 @@ function getOrCreateSheet_(name) {
   }
 
   return sheet;
+}
+
+function getPortfolioSpreadsheet_() {
+  return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 }
 
 function clearApiLog_() {

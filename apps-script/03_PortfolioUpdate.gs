@@ -17,7 +17,7 @@ function runApiDailySnapshot() {
 }
 
 function updateApiPortfolioValuesFromWatch_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getPortfolioSpreadsheet_();
   var watchSheet = ss.getSheetByName(CONFIG.SHEET_WATCH);
 
   if (!watchSheet) {
@@ -228,7 +228,7 @@ function updateApiPortfolioValuesFromWatch_() {
 }
 
 function appendApiDailyPriceHistory_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getPortfolioSpreadsheet_();
   var apiSheet = ss.getSheetByName(CONFIG.SHEET_API_PRICE);
   var historySheet = getOrCreateSheet_(CONFIG.SHEET_API_HISTORY);
 
@@ -297,7 +297,7 @@ function appendApiDailyPriceHistory_() {
 }
 
 function cleanupApiDailyHistoryDuplicates() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getPortfolioSpreadsheet_();
   var sheet = ss.getSheetByName(CONFIG.SHEET_API_HISTORY);
 
   if (!sheet) {
@@ -339,7 +339,7 @@ function cleanupApiDailyHistoryDuplicates() {
 }
 
 function appendApiDailySnapshot_(result) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getPortfolioSpreadsheet_();
   var snapSheet = getOrCreateSheet_(CONFIG.SHEET_DAILY_SNAPSHOT);
   var trueCapitalSheet = ss.getSheetByName(CONFIG.SHEET_TRUE_CAPITAL);
 
